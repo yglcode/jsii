@@ -7,6 +7,7 @@ import * as ts from 'typescript';
 import { Assembler } from './assembler';
 import { EmitResult, Emitter } from './emitter';
 import { ProjectInfo } from './project-info';
+import * as transforms from './transforms';
 import * as utils from './utils';
 
 const BASE_COMPILER_OPTIONS: ts.CompilerOptions = {
@@ -215,7 +216,10 @@ export class Compiler implements Emitter {
     program: ts.Program,
     stdlib: string,
   ): Promise<EmitResult> {
-    const emit = program.emit();
+    const emit = program.emit(undefined, undefined, undefined, undefined, {
+      before: [transforms.rewriteTsdoc],
+      afterDeclarations: [transforms.rewriteTsdocBundle],
+    });
     let hasErrors = emitHasErrors(emit, this.options.failOnWarnings);
     const diagnostics = [...emit.diagnostics];
 
