@@ -17,6 +17,7 @@ import { JSII_DIAGNOSTICS_CODE } from './utils';
 import { Validator } from './validator';
 import { SHORT_VERSION, VERSION } from './version';
 import { enabledWarnings } from './warnings';
+import { rewriteTsdocNode } from './transforms';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const sortJson = require('sort-json');
@@ -134,9 +135,12 @@ export class Assembler implements Emitter {
           ),
         );
         for (const node of moduleExports) {
+          const transformed = ts.transform(node.declarations[0], [
+            rewriteTsdocNode,
+          ]).transformed[0] as ts.Declaration;
           visitPromises.push(
             this._visitNode(
-              node.declarations[0],
+              transformed,
               new EmitContext([], this.projectInfo.stability),
             ),
           );
@@ -781,6 +785,17 @@ export class Assembler implements Emitter {
     if (ts.isClassDeclaration(node) && _isExported(node)) {
       // export class Name { ... }
       this._validateHeritageClauses(node.heritageClauses);
+
+      const newNode = ts.transform(node, [rewriteTsdocNode]).transformed[0];
+      console.log(`full text ${newNode.getFullText()}`);
+
+      console.log(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `syn comments ${ts
+          .getSyntheticLeadingComments(newNode)
+          ?.map((c) => c.text)}`,
+      );
+
       jsiiType = await this._visitClass(
         this._typeChecker.getTypeAtLocation(node),
         context,

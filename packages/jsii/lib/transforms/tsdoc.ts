@@ -26,7 +26,22 @@ export function rewriteTsdoc(ctx: ts.TransformationContext) {
   };
 }
 
-function handleNode(node: ts.Node, source: ts.SourceFile): ts.Node {
+export function rewriteTsdocNode<T extends ts.Node>(
+  ctx: ts.TransformationContext,
+) {
+  return (node: T): T => {
+    const source = node.getSourceFile();
+    const handled = handleNode(node, source);
+    return ts.visitEachChild(handled, visitor, ctx);
+
+    function visitor(node: ts.Node): ts.Node {
+      const handled = handleNode(node, source);
+      return ts.visitEachChild(handled, visitor, ctx);
+    }
+  };
+}
+
+function handleNode<T extends ts.Node>(node: T, source: ts.SourceFile): T {
   if (ts.isClassDeclaration(node)) {
     const comment = tsdocExperimental(node, source);
     if (comment !== undefined) {
@@ -72,10 +87,10 @@ function tsdocExperimental(
   return filtered[0];
 }
 
-function updateExperimentalDocString(
-  node: ts.Node,
+function updateExperimentalDocString<T extends ts.Node>(
+  node: T,
   comment: CommentRange,
-): ts.Node {
+): T {
   // const nodeText = node.getFullText(node.getSourceFile());
   // const commentranges = ts.getLeadingCommentRanges(nodeText, 0);
   const commentranges = undefined;
